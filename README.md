@@ -12,12 +12,30 @@ A simple test of three parsing crates in Rust. The primary objective is to simpl
 
 ## Project Approach
 
-For all three tests we'll explore parsing out the following features in a Markdown file:
+For all three tests we'll explore parsing out the following features in a Markdown file.
+
+> All reference definitions of Markdown should come from the [Commonmark Spec](https://spec.commonmark.org/0.30/).
 
 ### Base Markdown Features
 
-- `headers` pull out headers (their level and the text)
+- `blocks` at the top level a Markdown file is composed of _blocks_ of content
+  - We can also sub-type blocks in `leaf-blocks` and `container-blocks`
+- `inline` inline content is _contained_ inside blocks and represents the majority of the "prose" in any given document.
+
+Within the `blocks` we may also want to call out specifically the following types of block elements:
+
+- `list_item` - a single list item is a block
+- `list` - a grouping of list items
+- `blockquote` - a block element that is contained in another block
+- `code_block`
+
+For the `inline` sections we will define:
+
+- `headings` pull out headers (their level and the text)
 - `links` pull out the text and URI information of a Markdown link
+- We'll also cover the most basic styling elements:
+  - `italic` as text surrounded by \_ characters
+  - `bold` as text surrounded by \*\* characters
 
 ### Extending Markdown
 
@@ -77,7 +95,7 @@ Furthermore, since both Nom and Pest are _generalized_ parsers they can adapt to
 
     One example of this [CPython](https://en.wikipedia.org/wiki/CPython) which is a modern parser replacement to the original
 
-2. [**NOM**](https://docs.rs/nom/latest/nom/)
+2. **NOM**([nom](https://docs.rs/nom/latest/nom/), [nom supreme](https://docs.rs/nom-supreme/latest/nom_supreme/))
 
     NOM is a well respected generalized parsing crate in the Rust ecosystem. Unlike Pest, it doesn't use grammars but instead leverages parser functions which act as _combinators_ and can be chained together for significant reuse. This crate may not be able to beat a bespoke parser in performance but they do generate statically linked general parsers which are quite fast in their category and using a crate like this should drastically increase your ability to parse a DSL or any non-standard input.
 

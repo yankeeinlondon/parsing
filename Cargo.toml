@@ -1,0 +1,3 @@
+[workspace]
+members = ["p_pest", "p_nom", "p_pulldown"]
+

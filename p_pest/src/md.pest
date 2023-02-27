@@ -1,0 +1,182 @@
+//! Markdown Parsing Grammer in PEG format
+
+WHITESPACE = _{ " " }
+
+/// a silent single fixed space char
+space = _{ " " }
+non_whitepace = { !WHITESPACE }
+
+punctuation = @{ "." | "!" | "," | ";" | "?" }
+assignment_op = { ":" | "=" }
+
+// Assignment operator using `=` or `:` as assignment operator
+assignment = { 
+	key ~ 
+    assignment_op ~ 
+    open_double_quote? ~ 
+    value ~ 
+    close_double_quote?
+}
+
+/// Prose text that allows for any content and by being atomic
+/// ensures that spaces are preserved
+text = {
+	(
+      ASCII_ALPHANUMERIC | 
+      WHITESPACE | 
+      punctuation |
+      assignment
+ 	)*
+ }
+
+key = ${ text }
+value = { text }
+
+dash = @{ "-" }
+underscore = @{"_"}
+
+/// A dasherized variable
+dash_var = @{ 
+	ASCII_ALPHA ~ 
+	(dash? ~ ASCII_ALPHANUMERIC)*
+}
+/// A snake_case variable
+snake_var = @{ 
+	ASCII_ALPHA ~ 
+	(underscore? ~ ASCII_ALPHANUMERIC)*
+}
+
+open_double_quote = _{ "\"" }
+close_double_quote = _{ "\"" }
+
+/// an HTML tag name
+tag_name = @{ dash_var }
+
+/// HTML tag attribute
+attr = { key ~ "=" ~ open_double_quote ~ value ~ close_double_quote}
+
+/// HTML tag attributes
+attrs = ${
+	((WHITESPACE+ ~ attr)+ | WHITESPACE*) ~ WHITESPACE*
+}
+
+/// HTML start tag
+start_tag = ${ "<" 
+	~ tag_name 
+    ~ attrs
+    ~ ">"
+}
+
+/// HTML end tag
+end_tag = @{ 
+	"</" ~ 
+	tag_name ~ 
+    WHITESPACE* ~ 
+    ">"
+}
+
+self_closing_tag = @{ 
+	"<" ~ 
+    tag_name ~ 
+    WHITESPACE* ~
+    "/>" 
+}
+
+/// HTML tag; either self-closing or start-to-end tags
+tag = { (start_tag ~ end_tag) | (self_closing_tag) } 
+
+
+/// **space_collapse**
+///
+/// A rule which is matches _1 or more_ spaces in a row. This 
+/// is useful for allowing a space to be preserved while collapsing 
+/// multiple spaces into just a single space.
+space_collapse = { " "+ }
+
+/// a silent set of 0 to 2 spaces
+maybe_two_space = _{ " "{0,2} }
+/// a silent set of 0 to 3 spaces
+maybe_three_space = _{ " "{0,3} }
+
+/// The end of a line in Markdown is either a single newline
+/// character/sequence or the end of the file
+eol = { (NEWLINE | EOI) }
+
+/// A "line" in Markdown which is zero or more non-newline characters
+/// followed by a single newline (or end of file)
+line = @{ text ~ !(eol) }
+
+
+greater_than = ${ "<" ~ WHITESPACE+ }
+
+tag_start = ${"<" ~ &ASCII_ALPHA }
+
+/// The descriptive part of a Markdown link
+link_desc = { "[" ~ ASCII_ALPHANUMERIC ~ "]" }
+
+local_uri = { "./"? ~ ASCII }
+protocol = { "https" | "http" | "file" }
+external_uri = { protocol ~ "://" ~ ASCII }
+uri = { local_uri | external_uri }
+
+/// A Markdown's link's target URI
+link_uri = { "(" ~ uri ~ ")" }
+
+/// a Markdown based link and description
+link = { link_desc ~ link_uri }
+
+italic = { "_" ~ ANY ~ "_" }
+bold = { "**" ~ ASCII ~ "**" }
+
+heading_prefix = _{ "#" }
+
+h1 = @{ heading_prefix ~ line }
+h2 = @{ heading_prefix{2} ~ line }
+h3 = @{ heading_prefix{3} ~ line }
+h4 = @{ heading_prefix{4} ~ line }
+h5 = @{ heading_prefix{5} ~ line }
+h6 = @{ heading_prefix{6} ~ line }
+
+/// Markdown heading (level 1-6)
+///
+/// note: headings must have one space following the `#` character
+/// but may have as many as three. Some looser implementations allow
+/// for zero spaces but this it "out of spec" for Commonmark
+heading = { h6 | h5 | h4 | h3 | h2 | h1 }
+
+
+/// Inline text in Markdown
+inline = @{ (italic | bold | heading)+ }
+
+
+// BLOCKS
+// ---------------------------------
+
+/// Text blocks are terminated by two consecutive new lines
+block_terminator = { NEWLINE ~ NEWLINE }
+
+/// indicator that a given line is to be treated as a blockquote
+bq_preamble = _{ " "{0,3} ~ ">" }
+bq_line = { bq_preamble ~ inline }
+
+/// A Markdown **block quote**
+block_quote = { bq_line+ ~ block_terminator }
+
+/// A Markdown list item
+list_item = { "- " ~ ASCII ~ NEWLINE }
+/// A Markdown list of one or more list items
+list = { (list_item ~ NEWLINE)+ ~ block_terminator }
+
+indented_chunk = { line+  }
+
+/// Text block in Markdown
+block = { ( line )+ ~ block_terminator }
+
+
+/// A Markdown file
+file = { 
+    SOI ~
+    text ~
+    EOI
+}
+
