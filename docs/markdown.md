@@ -1,10 +1,10 @@
 # Markdown
 
-> [Commonmark Spec](https://spec.commonmark.org/0.30/)
+> The **Markdown** we will define is specified by **CommonMark** ([Spec](https://spec.commonmark.org/0.30/), [Interactive Playground](https://spec.commonmark.org/dingus/)).
 
 ## High Level Structure
 
-Before creating the parser, it sometimes helps to think in pictures of high-level relationships:
+<!-- Before creating the parser, it sometimes helps to think in pictures of high-level relationships: -->
 
 ```mermaid
 flowchart LR

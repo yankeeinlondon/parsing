@@ -1,6 +1,6 @@
 # Pest
 >
-> [github](https://github.com/pest-parser/pest), [api docs](https://docs.rs/nom/latest/nom/), [site](https://pest.rs), [book](https://pest.rs/book/)
+> [github](https://github.com/pest-parser/pest), [pest api](https://docs.rs/nom/latest/nom/), [site](https://pest.rs),[derive api](https://docs.rs/pest_derive/latest/pest_derive/index.html), [book](https://pest.rs/book/)
 
 ## Introduction
 

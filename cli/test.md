@@ -7,7 +7,7 @@ There I was, there I was, ... in the Congo!
   - [Topic 2](#topic-2)
   - [Topic 3](#topic-3)
 
-And if this wasn't what you were looking for maybe you'll find solace in the [meaning of life](). ::thumbs_up::
+And if this wasn't what you were looking for maybe you'll find solace in the [meaning of life](https://meaning.com). ::thumbs_up::
 
 ## Topic 1
 
@@ -15,10 +15,33 @@ Veniam nulla tempor excepteur cillum occaecat minim amet culpa commodo aliqua ea
 
 ## Topic 2
 
+<my-inline>foobar</my-inline>
+
 Id culpa officia laboris ullamco ipsum sint tempor est ut non nisi tempor. Lorem dolore excepteur et non labore anim veniam do labore. Duis dolor cillum laboris non exercitation excepteur labore labore magna laborum amet in. Minim velit dolore incididunt pariatur eiusmod.
+
+> And now for something completely different!
+>
+> - Monty Python
+
+<block-component>
+  this is inside a block component
+</block-component>
 
 ## Topic 3
 
 ::smile { color: "red" }
+
++ a list using the valid but sometimes linted "+" list marker
++ list2
+
+  interior text to a list
+
++ list3
+  interior text with no blank lines is not separated from top line
++ list4
++ list5
+  
+  interior text with beginning blank line but no following is ok but some linters will complain
++ list6
 
 Irure reprehenderit deserunt commodo enim irure aliquip. Laborum culpa tempor labore duis velit amet proident aute commodo magna. Laboris exercitation commodo anim sit consequat proident minim qui cupidatat laboris.
