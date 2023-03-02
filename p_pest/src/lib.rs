@@ -15,9 +15,9 @@ use std::{
 #[grammar = "markdown.pest"]
 pub struct Markdown;
 
-struct Init;
-struct Parsed;
-struct Html;
+pub struct Init;
+pub struct Parsed;
+pub struct Html;
 
 /// Our own Markdown parser built using **Pest**.
 pub struct Parkdown<'a, TState = Init> {
@@ -38,7 +38,7 @@ pub struct Parkdown<'a, TState = Init> {
 impl<'a, Init> Parkdown<'a, Init> {
     /// create a new Parkdown parser with a reference
     /// to the underlying raw markdown content.
-    pub fn new(content: &'a str) -> Self {
+    pub fn new(content: &'a str) -> Parkdown<'a, Init> {
         Self {
             content: Cow::Borrowed(content),
             rule: Rule::file,
@@ -47,7 +47,7 @@ impl<'a, Init> Parkdown<'a, Init> {
             state: PhantomData::<Init>,
         }
     }
-    pub fn new_owned(content: String) -> Self {
+    pub fn new_owned(content: String) -> Parkdown<'a, Init> {
         Self {
             content: Cow::Owned(content),
             rule: Rule::file,
@@ -70,7 +70,6 @@ impl<'a, Init> Parkdown<'a, Init> {
     }
 
     pub fn from_file(file: &str) -> Result<Parkdown<'a, Init>> {
-        color_eyre::install()?;
         let content = read_to_string(&file)?;
 
         let mut p = Parkdown::new_owned(content);
@@ -80,7 +79,6 @@ impl<'a, Init> Parkdown<'a, Init> {
     }
 
     pub fn parse<'b>(&'b self) -> Result<Parkdown<'b, Parsed>> {
-        color_eyre::install()?;
         let pairs: Pairs<'b, Rule> = Markdown::parse(
             self.rule, //
             &self.content,
@@ -89,7 +87,7 @@ impl<'a, Init> Parkdown<'a, Init> {
         let p: Parkdown<'b, Parsed> = Parkdown {
             state: PhantomData::<Parsed>,
             pairs: Some(pairs),
-            content: self.content,
+            content: Cow::Borrowed(&self.content),
             rule: self.rule,
             file: self.file.clone(),
         };
@@ -98,11 +96,21 @@ impl<'a, Init> Parkdown<'a, Init> {
     }
 }
 
+impl<'a, Parsed> Parkdown<'a, Parsed> {
+    pub fn pairs(&self) -> &Pairs<'a, Rule> {
+        match &self.pairs {
+            Some(pairs) => &pairs,
+            None => panic!("pairs() called in invalid state!"),
+        }
+    }
+}
 /// **parse_rule**
 ///
-/// Parses markdown content using a specified rule defined in MdGrammar
-fn parse_rule<'a>(rule: Rule, content: &'a str) -> Result<Pairs<Rule>> {
-    let r = Markdown::parse(rule, content).unwrap_or_else(|e| panic!("{}", e));
+/// Parses markdown content using a specified rule defined Markdown
+/// struct/parser
+pub fn parse_rule<'a>(rule: Rule, content: &'a str) -> Result<Pairs<Rule>> {
+    let r: Pairs<Rule> = Markdown::parse(rule, content) //
+        .unwrap_or_else(|e| panic!("{}", e));
 
     Ok(r)
 }
@@ -113,38 +121,58 @@ mod tests {
 
     #[test]
     fn is_attrs() {
-        let p = Parkdown::with_rule(
-            Rule::attrs,
-            "   class=\"foo bar baz\" data-flag=\"false\"  ",
-        );
-
-        let result = parse_rule(
+        let p = Markdown::parse(
             Rule::attrs, //
             "   class=\"foo bar baz\" data-flag=\"false\"  ",
         );
-        // println!("{:#?}", &result);
 
-        assert!(matches!(result, Ok(_)));
+        assert!(matches!(p, Ok(_)))
     }
 
     #[test]
     fn self_closing_tag() {
-        let self_closing = "<test class=\"foo bar\" style=\"color: red\" />";
-        assert!(matches!(parse_rule(Rule::tag, self_closing), Ok(_)));
+        let p = Markdown::parse(
+            Rule::tag, //
+            "<test class=\"foo bar\" style=\"color: red\" />",
+        );
+
+        assert!(matches!(p, Ok(_)))
     }
     #[test]
     fn block_tag() {
-        let inline = "<foo-bar class=\"foo bar\">hello world</foo-bar>";
-        assert!(matches!(parse_rule(Rule::tag, inline), Ok(_)));
+        let p = Markdown::parse(
+            Rule::block_tag,
+            "<foo-bar class=\"foo bar\">hello world</foo-bar>",
+        );
+
+        assert!(matches!(p, Ok(_)))
     }
 
     #[test]
-    fn h1_is_heading() {
-        let result = parse_rule(
+    fn h1() {
+        let p = Markdown::parse(
             Rule::h1, //
-            "# Foobar",
+            "# Foobar\n",
         );
-        assert!(matches!(result, Ok(_)));
+
+        assert!(matches!(p, Ok(_)));
+    }
+    #[test]
+    fn h6_with_two_space_indent() {
+        let p = Markdown::parse(
+            Rule::h6, //
+            "  ###### Foobar\n",
+        );
+
+        assert!(matches!(p, Ok(_)));
+    }
+    #[test]
+    fn h4_from_heading() {
+        let p = Markdown::parse(
+            Rule::heading, //
+            " #### Foobar\n",
+        );
+        assert!(matches!(p, Ok(_)));
     }
 
     #[test]
@@ -156,8 +184,11 @@ something
 ---
 something else
         "#;
-        let parser = Parkdown::new(&md);
+        let p = Markdown::parse(
+            Rule::file, //
+            &md,
+        );
 
-        assert!(matches!(parser, Parkdown<'_, Init>));
+        assert!(matches!(p, Ok(_)))
     }
 }

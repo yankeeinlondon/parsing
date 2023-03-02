@@ -13,7 +13,7 @@ space = @{ " " }
 pad = _{ space }
 
 /// optionally allows up to three characters of silent spaces
-prefix3 = _{ pad{0,3} }
+opt3_space = _{ " "{0,3} }
 
 /// form feed char
 ff = @{ "\\f" } 
@@ -126,7 +126,7 @@ line = { indent* ~ content }
 
 /// The end of a line in Markdown is either a single newline
 /// character/sequence or the end of the file
-eol = { line_ending | EOI }
+eol = _{ NEWLINE | EOI }
 
 /// matches on an _indentation_ which is either a single `\t` character
 /// or two spaces.
@@ -236,9 +236,9 @@ inner = ${ ANY }
 
 /// An HTML tag which is not self-closing and therefore contains an "inner" scope
 block_tag = {
-    "<" ~ PUSH(tagname) ~ attrs ~ ">" ~
-    inner ~
-    "</" ~ PEEK ~ WHITESPACE* ~ ">"
+    start_tag ~
+    inner* ~
+    end_tag
 }
 
 self_closing_tag = @{ 
@@ -307,17 +307,17 @@ list = { (list_item ~ eol)+ }
 h_prefix = _{ "#" }
 
 /// Level 1 heading in Markdown
-h1 = ${ prefix3 ~ h_prefix ~ trim ~ title ~ NEWLINE}
+h1 = @{ opt3_space ~ h_prefix ~ trim ~ title ~ eol}
 /// Level 2 heading in Markdown
-h2 = ${ prefix3 ~ h_prefix{2} ~ trim ~ title ~ NEWLINE}
+h2 = @{ opt3_space ~ h_prefix{2} ~ trim ~ title ~ eol}
 /// Level 3 heading in Markdown
-h3 = ${ prefix3 ~ h_prefix{3} ~ trim ~ title ~ NEWLINE}
+h3 = @{ opt3_space ~ h_prefix{3} ~ trim ~ title ~ eol}
 /// Level 4 heading in Markdown
-h4 = ${ prefix3 ~ h_prefix{4} ~ trim ~ title ~ NEWLINE}
+h4 = @{ opt3_space ~ h_prefix{4} ~ trim ~ title ~ eol}
 /// Level 5 heading in Markdown
-h5 = ${ prefix3 ~ h_prefix{5} ~ trim ~ title ~ NEWLINE}
+h5 = @{ opt3_space ~ h_prefix{5} ~ trim ~ title ~ eol}
 /// Level 6 heading in Markdown
-h6 = ${ prefix3 ~ h_prefix{6} ~ trim ~ title ~ NEWLINE}
+h6 = @{ opt3_space ~ h_prefix{6} ~ trim ~ title ~ eol}
 
 /// Markdown heading (level 1-6)
 ///
