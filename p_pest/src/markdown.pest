@@ -1,19 +1,19 @@
 //! Markdown Parsing Grammer in PEG format
 
 /// line feed char
-lf = @{ "\n" }
+lf = _{ "\n" }
 /// carraige return char
-cr = @{ "\r" }
+cr = _{ "\r" }
 /// tab char
-tab = @{ "\t" }
+tab = _{ "\t" }
 /// space char
-space = @{ " " }
+space = _{ " " }
 
 /// space char in silent matcher
 pad = _{ space }
 
 /// optionally allows up to three characters of silent spaces
-prefix3 = _{ pad{0,3} }
+opt3_space = _{ " "{0,3} }
 
 /// form feed char
 ff = @{ "\\f" } 
@@ -46,7 +46,7 @@ text = ${ (!double_quote ~ ANY) }
 title = ${ (!NEWLINE ~ ANY)* }
 
 
-title_with_attrs = ${ (!NEWLINE ~ dict | ANY )}
+title_with_attrs = ${ (!NEWLINE ~ attrs | ANY )}
 
 /// An [entity reference](https://spec.commonmark.org/0.30/#entity-references) starts 
 /// with `&` and concludes with `;`
@@ -115,7 +115,6 @@ line_ending = @{
     (cr ~ lf)
 }
 
-empty_line = @{ WHITESPACE* ~ line_ending }
 
 /// accepts all markdown content up to the end of a line
 content = { text ~ &eol}
@@ -126,11 +125,22 @@ line = { indent* ~ content }
 
 /// The end of a line in Markdown is either a single newline
 /// character/sequence or the end of the file
-eol = { line_ending | EOI }
+eol = _{ NEWLINE | EOI }
+
+to_eol = @{not_newline*}
+
+/// a line with nothing but optional spaces or tabs followed by `eol`
+empty_line = @{ (space | tab)* ~ eol }
+
+/// The start of a line
+sol = _{ &NEWLINE ~ ANY }
 
 /// matches on an _indentation_ which is either a single `\t` character
 /// or two spaces.
-indent = @{ tab | (space ~ space ~ space ~ space) }
+indent = @{ tab | space{4} }
+
+/// a hidden version of `indent`
+h_indent = _{indent}
 
 sentence_terminators = @{ "." | "!" | "?" }
 sentence_sep_char = @{ "," | ";" }
@@ -197,12 +207,15 @@ attr_value = @{
 /// but many SPA frameworks have extended this to allow other casing types so we
 /// will accept camelCase, PascalCase, snake_case, but NOT kebab-case.
 key = @{ kebab_case | snake_case }
+
+prop_name = @{ cased_var }
+
 /// an HTML attribute's "value" which is fairly permissive but double quotation marks
 /// must be escaped to be included.
 value = @{ attr_value }
 
 /// an HTML tag name in either **kebab** or **pascal** casing
-tagname = ${ kebab_case | pascal_case }
+tagname = @{ kebab_case | pascal_case }
 
 /// HTML tag attribute with key and value
 attr = ${ key ~ "=" ~ open_double_quote ~ value ~ close_double_quote}
@@ -210,33 +223,53 @@ attr = ${ key ~ "=" ~ open_double_quote ~ value ~ close_double_quote}
 /// a collection of HTML tag attributes
 attrs = ${ (WHITESPACE* ~ attr)* ~ WHITESPACE* }
 
+
+/// a _property_ on a dictionary or CSV like container
+prop = ${ 
+	prop_name ~ 
+    (space | tab){0,3} ~ 
+    (":" | "=") ~ 
+    (space | tab){0,3} ~ 
+    open_double_quote ~ 
+    value ~ 
+    close_double_quote
+}
+
 /// a dictionary of key value pairs
 /// ```md
-/// ## My Topic { class: "foobar" }
+/// { class: "foobar" }
 /// ```
-dict = { "{" ~ attrs ~ "}" }
-
-/// HTML start tag
-start_tag = @{ 
-    "<" ~
-	tagname ~
-    attrs ~
-    ">"
+dict = {
+    (space | tab){0,3} ~  
+    "{" ~ 
+    (space | tab){0,3} ~ 
+    prop ~
+    ("," ~ (space | tab){0,3} ~ prop)* ~
+    (space | tab){0,3} ~
+    "}" ~
+    (space | tab){0,3}
 }
 
-/// HTML end tag
-end_tag = @{ 
-	"</" ~ 
-	tagname ~ 
-    trim ~ 
-    ">"
+csv = {
+    (space | tab){0,3} ~
+    prop ~
+    (space | tab){0,3} ~
+    ("," ~ (space | tab){0,3} ~ prop)* ~
+    (space | tab){0,3}
 }
 
-inner = ${ ANY }
+end_tag = @{
+	"</" ~ PEEK ~ WHITESPACE* ~ ">"
+}
+
+inner = ${ ( !end_tag ~ ANY)* }
 
 /// An HTML tag which is not self-closing and therefore contains an "inner" scope
 block_tag = {
-    "<" ~ PUSH(tagname) ~ attrs ~ ">" ~
+	"<" ~
+    PUSH(tagname) ~
+    attrs ~
+    ">" ~
     inner ~
     "</" ~ PEEK ~ WHITESPACE* ~ ">"
 }
@@ -307,17 +340,17 @@ list = { (list_item ~ eol)+ }
 h_prefix = _{ "#" }
 
 /// Level 1 heading in Markdown
-h1 = ${ prefix3 ~ h_prefix ~ trim ~ title ~ NEWLINE}
+h1 = @{ opt3_space ~ h_prefix ~ trim ~ title ~ eol}
 /// Level 2 heading in Markdown
-h2 = ${ prefix3 ~ h_prefix{2} ~ trim ~ title ~ NEWLINE}
+h2 = @{ opt3_space ~ h_prefix{2} ~ trim ~ title ~ eol}
 /// Level 3 heading in Markdown
-h3 = ${ prefix3 ~ h_prefix{3} ~ trim ~ title ~ NEWLINE}
+h3 = @{ opt3_space ~ h_prefix{3} ~ trim ~ title ~ eol}
 /// Level 4 heading in Markdown
-h4 = ${ prefix3 ~ h_prefix{4} ~ trim ~ title ~ NEWLINE}
+h4 = @{ opt3_space ~ h_prefix{4} ~ trim ~ title ~ eol}
 /// Level 5 heading in Markdown
-h5 = ${ prefix3 ~ h_prefix{5} ~ trim ~ title ~ NEWLINE}
+h5 = @{ opt3_space ~ h_prefix{5} ~ trim ~ title ~ eol}
 /// Level 6 heading in Markdown
-h6 = ${ prefix3 ~ h_prefix{6} ~ trim ~ title ~ NEWLINE}
+h6 = @{ opt3_space ~ h_prefix{6} ~ trim ~ title ~ eol}
 
 /// Markdown heading (level 1-6)
 ///
@@ -331,19 +364,59 @@ paragraph_end = @{ empty_line ~ empty_line }
 
 paragraph = { (!paragraph_end ~ ANY ) ~ paragraph_end }
 
-container_block = { paragraph }
-
 thematic_char = @{ "*" | "-" | "_" }
+
+/// ensures the SAME thematic character is repeated at least
+/// three times.
+thematic_characters = { 
+    PUSH(thematic_char) ~ PEEK{2} ~ PEEK* ~ DROP
+}
+
 /// A thematic break is a block element which creates a page
 /// break by using three (or more) break characters (`*`,`-`,`_`) at
 /// the start of a line (with up to three spaces as a prefix)
-thematic_break = { pad{0,3} ~ PUSH(thematic_char) ~ PEEK{2} ~ PEEK* ~ NEWLINE }
+thematic_break = @{ thematic_characters ~ eol }
+
+code_block_precondition = @{((empty_line+) | SOI) }
+code_line = @{indent ~ to_eol}
+
+/// a code block originated by an indented line
+/// directly after the start of input or after at least one
+/// empty line.
+indented_code_block = ${ 
+    code_block_precondition ~ 
+    (code_line ~ eol)* 
+}
+
+fence_lang = @{ ASCII_ALPHA* }
+fence_ignore = @{ ANY ~ to_eol }
+fence_info = @{ dict | csv }
+
+fence_defn = ${ 
+	code_block_precondition ~
+	"```" ~ 
+    fence_lang ~
+    fence_info? ~
+    fence_ignore? ~
+    eol
+}
+
+fence_close = @{ "```" ~ (space|tab)* ~ eol }
+
+fenced_code_line = @{to_eol}
+
+/// a fenced code block
+fenced_code_block = ${
+    fence_defn ~
+	code_line* ~
+    fence_close
+}
 
 leaf_block = { heading | thematic_break  }
+container_block = { paragraph | indented_code_block }
 
 /// Markdown BLOCK element
 block = { leaf_block | container_block }
-
 
 /// A Markdown file
 file = { 
